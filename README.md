@@ -17,7 +17,7 @@ This project is mainly based on different samples sketches that I merged and ada
 
 Documentation
 -------------
-just change in the Scan-I2C-WiFi.ino the defiition according to the board you're using and the wiring.
+just change in the Scan-I2C-WiFi.ino the definition according to the board you're using and the wiring.
 
 ```arduino
 / ===========================================
