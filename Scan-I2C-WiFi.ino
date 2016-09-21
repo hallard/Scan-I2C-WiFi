@@ -13,6 +13,11 @@
 #include <ESP8266WiFi.h>
 #include <Ticker.h>
 #include <Wire.h>
+
+extern "C" {
+#include "user_interface.h"
+}
+
 #include "icons.h"
 #include "fonts.h"
 
@@ -44,14 +49,14 @@ char password[65];
 #define RGB_LED_PIN 0
 // 2 LEDs
 #define RGB_LED_COUNT 2
-// Comment if you have only RGB LED and not RGBW led 
-#define RGBW_LED 
+// Comment if you have only RGB LED and not RGBW led
+#define RGBW_LED
 
 // ===========================================
 // End of configuration
 // ===========================================
 
-#ifdef RGB_LED_PIN 
+#ifdef RGB_LED_PIN
 #include <NeoPixelBus.h>
 #endif
 
@@ -80,12 +85,12 @@ char password[65];
 #define COLOR_MAGENTA        300
 #define COLOR_PINK           350
 
-#ifdef RGB_LED_PIN 
+#ifdef RGB_LED_PIN
 #ifdef RGBW_LED
-  NeoPixelBus<NeoGrbwFeature, NeoEsp8266BitBang800KbpsMethod>rgb_led(RGB_LED_COUNT, RGB_LED_PIN);
+NeoPixelBus<NeoGrbwFeature, NeoEsp8266BitBang800KbpsMethod>rgb_led(RGB_LED_COUNT, RGB_LED_PIN);
 #else
-  NeoPixelBus<NeoRgbFeature, NeoEsp8266BitBang800KbpsMethod>rgb_led(RGB_LED_COUNT, RGB_LED_PIN);
-#endif 
+NeoPixelBus<NeoRgbFeature, NeoEsp8266BitBang800KbpsMethod>rgb_led(RGB_LED_COUNT, RGB_LED_PIN);
+#endif
 #endif
 
 // Number of line to display for devices and Wifi
@@ -98,38 +103,38 @@ SH1106Wire  display(I2C_DISPLAY_ADDRESS, SDA_PIN, SDC_PIN);
 #endif
 OLEDDisplayUi ui( &display );
 
-Ticker ticker;    
+Ticker ticker;
 bool readyForUpdate = false;  // flag to launch update (I2CScan)
 
 bool has_display          = false;  // if I2C display detected
 uint8_t NumberOfI2CDevice = 0;      // number of I2C device detected
 int8_t NumberOfNetwork    = 0;      // number of wifi networks detected
-uint8_t rgb_luminosity    = 50 ;    // Luminosity from 0 to 100% 
+uint8_t rgb_luminosity    = 50 ;    // Luminosity from 0 to 100%
 
 char i2c_dev[I2C_DISPLAY_DEVICE][32]; // Array on string displayed
 
-#ifdef RGB_LED_PIN 
-void LedRGBOFF(uint16_t led=0);
-void LedRGBON (uint16_t hue, uint16_t led=0);
+#ifdef RGB_LED_PIN
+void LedRGBOFF(uint16_t led = 0);
+void LedRGBON (uint16_t hue, uint16_t led = 0);
 #else
-void LedRGBOFF(uint16_t led=0) {};
-void LedRGBON (uint16_t hue, uint16_t led) {};
+void LedRGBOFF(uint16_t led = 0) {};
+void LedRGBON (uint16_t hue, uint16_t led = 0) {};
 #endif
 
 
-#ifdef RGB_LED_PIN 
+#ifdef RGB_LED_PIN
 /* ======================================================================
-Function: LedRGBON
-Purpose : Set RGB LED strip color, but does not lit it
-Input   : Hue of LED (0..360)
+  Function: LedRGBON
+  Purpose : Set RGB LED strip color, but does not lit it
+  Input   : Hue of LED (0..360)
           led number (from 1 to ...), if 0 then all leds
-Output  : - 
-Comments: 
-====================================================================== */
+  Output  : -
+  Comments:
+  ====================================================================== */
 void LedRGBON (uint16_t hue, uint16_t led)
 {
   uint8_t start = 0;
-  uint8_t end   = RGB_LED_COUNT-1; // Start at 0
+  uint8_t end   = RGB_LED_COUNT - 1; // Start at 0
 
   // Convert to neoPixel API values
   // H (is color from 0..360) should be between 0.0 and 1.0
@@ -144,25 +149,25 @@ void LedRGBON (uint16_t hue, uint16_t led)
     led--;
     start = led ;
     end   = start ;
-  } 
+  }
 
-  for (uint8_t i=start ; i<=end; i++) {
+  for (uint8_t i = start ; i <= end; i++) {
     rgb_led.SetPixelColor(i, target);
-    rgb_led.Show();  
+    rgb_led.Show();
   }
 }
 
 /* ======================================================================
-Function: LedRGBOFF 
-Purpose : light off the RGB LED strip
-Input   : Led number starting at 1, if 0=>all leds
-Output  : - 
-Comments: -
-====================================================================== */
+  Function: LedRGBOFF
+  Purpose : light off the RGB LED strip
+  Input   : Led number starting at 1, if 0=>all leds
+  Output  : -
+  Comments: -
+  ====================================================================== */
 void LedRGBOFF(uint16_t led)
 {
   uint8_t start = 0;
-  uint8_t end   = RGB_LED_COUNT-1; // Start at 0
+  uint8_t end   = RGB_LED_COUNT - 1; // Start at 0
 
   // just one LED ?
   if (led) {
@@ -172,22 +177,22 @@ void LedRGBOFF(uint16_t led)
   }
 
   // stop animation, reset params
-  for (uint8_t i=start ; i<=end; i++) {
+  for (uint8_t i = start ; i <= end; i++) {
     // clear the led strip
     rgb_led.SetPixelColor(i, RgbColor(0));
-    rgb_led.Show();  
+    rgb_led.Show();
   }
 }
 #endif
 
 /* ======================================================================
-Function: i2cScan
-Purpose : scan I2C bus
-Input   : specifc address if looking for just 1 specific device
-Output  : number of I2C devices seens
-Comments: -
-====================================================================== */
-uint8_t i2c_scan(uint8_t address=0xff)
+  Function: i2cScan
+  Purpose : scan I2C bus
+  Input   : specifc address if looking for just 1 specific device
+  Output  : number of I2C devices seens
+  Comments: -
+  ====================================================================== */
+uint8_t i2c_scan(uint8_t address = 0xff)
 {
   uint8_t error;
   int nDevices;
@@ -199,7 +204,7 @@ uint8_t i2c_scan(uint8_t address=0xff)
 
   if (address >= start && address <= end) {
     start = address;
-    end   = address+1;
+    end   = address + 1;
     Serial.print(F("Searching for device at address 0x"));
     Serial.printf("%02X ", address);
   } else {
@@ -207,7 +212,7 @@ uint8_t i2c_scan(uint8_t address=0xff)
   }
 
   nDevices = 0;
-  for(address = start; address < end; address++ ) {
+  for (address = start; address < end; address++ ) {
     // The i2c_scanner uses the return value of
     // the Write.endTransmisstion to see if
     // a device did acknowledge to the address.
@@ -216,30 +221,30 @@ uint8_t i2c_scan(uint8_t address=0xff)
 
     if (error == 0) {
       Serial.printf("Device ");
-      
+
       if (address == 0x40)
         strcpy(device, "TH02" );
-      else if (address==0x29 || address==0x39 || address==0x49)
+      else if (address == 0x29 || address == 0x39 || address == 0x49)
         strcpy(device, "TSL2561" );
-      else if (address==I2C_DISPLAY_ADDRESS || address==I2C_DISPLAY_ADDRESS+1)
+      else if (address == I2C_DISPLAY_ADDRESS || address == I2C_DISPLAY_ADDRESS + 1)
         strcpy(device, "OLED SSD1306" );
-      else if (address==0x64)
+      else if (address == 0x64)
         strcpy(device, "ATSHA204" );
-      else 
+      else
         strcpy(device, "Unknown" );
 
       sprintf(buffer, "0x%02X : %s", address, device );
-      if (index<I2C_DISPLAY_DEVICE) {
+      if (index < I2C_DISPLAY_DEVICE) {
         strcpy(i2c_dev[index++], buffer );
       }
-      
+
       Serial.println(buffer);
       nDevices++;
     }
-    else if (error==4) 
+    else if (error == 4)
     {
       Serial.printf("Unknow error at address 0x%02X", address);
-    }    
+    }
 
     yield();
   }
@@ -253,14 +258,14 @@ uint8_t i2c_scan(uint8_t address=0xff)
 
 
 /* ======================================================================
-Function: updateData
-Purpose : update by rescanning I2C bus
-Input   : OLED display pointer
-Output  : -
-Comments: -
-====================================================================== */
+  Function: updateData
+  Purpose : update by rescanning I2C bus
+  Input   : OLED display pointer
+  Output  : -
+  Comments: -
+  ====================================================================== */
 void updateData(OLEDDisplay *display) {
-  // connected 
+  // connected
   if ( WiFi.status() == WL_CONNECTED  ) {
     LedRGBON(COLOR_GREEN);
   } else {
@@ -270,7 +275,7 @@ void updateData(OLEDDisplay *display) {
   drawProgress(display, 0, "Scanning I2C...");
   NumberOfI2CDevice = i2c_scan();
   // Simulate slow scan to be able to see on display
-  for (uint8_t i=1; i<100; i++) {
+  for (uint8_t i = 1; i < 100; i++) {
     drawProgress(display, i, "Scanning I2C...");
     delay(2);
   }
@@ -280,15 +285,15 @@ void updateData(OLEDDisplay *display) {
 }
 
 /* ======================================================================
-Function: drawProgress
-Purpose : prograss indication 
-Input   : OLED display pointer
+  Function: drawProgress
+  Purpose : prograss indication
+  Input   : OLED display pointer
           percent of progress (0..100)
           String above progress bar
           String below progress bar
-Output  : -
-Comments: -
-====================================================================== */
+  Output  : -
+  Comments: -
+  ====================================================================== */
 void drawProgress(OLEDDisplay *display, int percentage, String labeltop, String labelbot) {
   if (has_display) {
     display->clear();
@@ -302,46 +307,46 @@ void drawProgress(OLEDDisplay *display, int percentage, String labeltop, String 
 }
 
 /* ======================================================================
-Function: drawProgress
-Purpose : prograss indication 
-Input   : OLED display pointer
+  Function: drawProgress
+  Purpose : prograss indication
+  Input   : OLED display pointer
           percent of progress (0..100)
           String above progress bar
-Output  : -
-Comments: -
-====================================================================== */
+  Output  : -
+  Comments: -
+  ====================================================================== */
 void drawProgress(OLEDDisplay *display, int percentage, String labeltop ) {
   drawProgress(display, percentage, labeltop, String(""));
 }
 
 /* ======================================================================
-Function: drawFrameWifi
-Purpose : WiFi logo and IP address
-Input   : OLED display pointer
-Output  : -
-Comments: -
-====================================================================== */
+  Function: drawFrameWifi
+  Purpose : WiFi logo and IP address
+  Input   : OLED display pointer
+  Output  : -
+  Comments: -
+  ====================================================================== */
 void drawFrameWifi(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   display->clear();
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   display->setFont(Roboto_Condensed_Bold_Bold_16);
   // see http://blog.squix.org/2015/05/esp8266-nodemcu-how-to-create-xbm.html
   // on how to create xbm files
-  display->drawXbm( x + (128-WiFi_width)/2, 0, WiFi_width, WiFi_height, WiFi_bits);
-  display->drawString(x+ 64, WiFi_height+4, WiFi.localIP().toString());
+  display->drawXbm( x + (128 - WiFi_width) / 2, 0, WiFi_width, WiFi_height, WiFi_bits);
+  display->drawString(x + 64, WiFi_height + 4, WiFi.localIP().toString());
   ui.disableIndicator();
 }
 
 /* ======================================================================
-Function: drawFrameI2C
-Purpose : I2C info screen (called by OLED ui)
-Input   : OLED display pointer
-Output  : -
-Comments: -
-====================================================================== */
+  Function: drawFrameI2C
+  Purpose : I2C info screen (called by OLED ui)
+  Input   : OLED display pointer
+  Output  : -
+  Comments: -
+  ====================================================================== */
 void drawFrameI2C(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   char buff[16];
-  sprintf(buff, "%d I2C Device%c",NumberOfI2CDevice, NumberOfI2CDevice>1?'s':' ');
+  sprintf(buff, "%d I2C Device%c", NumberOfI2CDevice, NumberOfI2CDevice > 1 ? 's' : ' ');
 
   display->clear();
   display->setTextAlignment(TEXT_ALIGN_CENTER);
@@ -351,23 +356,23 @@ void drawFrameI2C(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, in
   //display->setFont(Roboto_Condensed_Plain_16);
   display->setFont(Roboto_Condensed_12);
 
-  for (uint8_t i=0; i<NumberOfI2CDevice; i++) {
-    if (i<I2C_DISPLAY_DEVICE)
-      display->drawString(x + 0, y + 16 + 12*i, i2c_dev[i]);
+  for (uint8_t i = 0; i < NumberOfI2CDevice; i++) {
+    if (i < I2C_DISPLAY_DEVICE)
+      display->drawString(x + 0, y + 16 + 12 * i, i2c_dev[i]);
   }
   ui.disableIndicator();
 }
 
 /* ======================================================================
-Function: drawFrameNet
-Purpose : WiFi network info screen (called by OLED ui)
-Input   : OLED display pointer
-Output  : -
-Comments: -
-====================================================================== */
+  Function: drawFrameNet
+  Purpose : WiFi network info screen (called by OLED ui)
+  Input   : OLED display pointer
+  Output  : -
+  Comments: -
+  ====================================================================== */
 void drawFrameNet(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   char buff[64];
-  sprintf(buff, "%d Wifi Network",NumberOfNetwork);
+  sprintf(buff, "%d Wifi Network", NumberOfNetwork);
   display->clear();
   display->setTextAlignment(TEXT_ALIGN_CENTER);
   display->setFont(Roboto_Condensed_Bold_Bold_16);
@@ -375,27 +380,27 @@ void drawFrameNet(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, in
   display->setTextAlignment(TEXT_ALIGN_LEFT);
   display->setFont(Roboto_Condensed_12);
 
-  for (int i=0; i < NumberOfNetwork; i++) {
+  for (int i = 0; i < NumberOfNetwork; i++) {
     // Print SSID and RSSI for each network found
-    if (i<WIFI_DISPLAY_NET) {
-      sprintf(buff, "%s %c", WiFi.SSID(i).c_str(), WiFi.encryptionType(i)==ENC_TYPE_NONE?' ':'*' );
-      display->drawString(x + 0, y + 16 + 12*i, buff);
+    if (i < WIFI_DISPLAY_NET) {
+      sprintf(buff, "%s %c", WiFi.SSID(i).c_str(), WiFi.encryptionType(i) == ENC_TYPE_NONE ? ' ' : '*' );
+      display->drawString(x + 0, y + 16 + 12 * i, buff);
     }
   }
 
   ui.disableIndicator();
- }
+}
 
 /* ======================================================================
-Function: drawFrameLogo
-Purpose : Company logo info screen (called by OLED ui)
-Input   : OLED display pointer
-Output  : -
-Comments: -
-====================================================================== */
+  Function: drawFrameLogo
+  Purpose : Company logo info screen (called by OLED ui)
+  Input   : OLED display pointer
+  Output  : -
+  Comments: -
+  ====================================================================== */
 void drawFrameLogo(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, int16_t y) {
   display->clear();
-  display->drawXbm(x + (128-ch2i_width)/2, y, ch2i_width, ch2i_height, ch2i_bits);
+  display->drawXbm(x + (128 - ch2i_width) / 2, y, ch2i_width, ch2i_height, ch2i_bits);
   ui.disableIndicator();
 }
 
@@ -406,22 +411,22 @@ int numberOfFrames = 4;
 
 
 /* ======================================================================
-Function: setReadyForUpdate
-Purpose : Called by ticker to tell main loop we need to update data
-Input   : -
-Output  : -
-Comments: -
-====================================================================== */
+  Function: setReadyForUpdate
+  Purpose : Called by ticker to tell main loop we need to update data
+  Input   : -
+  Output  : -
+  Comments: -
+  ====================================================================== */
 void setReadyForUpdate() {
   Serial.println("Setting readyForUpdate to true");
   readyForUpdate = true;
 }
 
 /* ======================================================================
-Function: setup
-Purpose : you should know ;-)
-====================================================================== */
-void setup() 
+  Function: setup
+  Purpose : you should know ;-)
+  ====================================================================== */
+void setup()
 {
   uint16_t led_color ;
   char thishost[33];
@@ -433,14 +438,14 @@ void setup()
 
   LedRGBOFF();
 
-  //Wire.pins(SDA, SCL); 
+  //Wire.pins(SDA, SCL);
   Wire.begin(SDA_PIN, SDC_PIN);
   Wire.setClock(100000);
 
   if (i2c_scan(I2C_DISPLAY_ADDRESS)) {
     has_display = true;
   } else {
-    if (i2c_scan(I2C_DISPLAY_ADDRESS+1)) {
+    if (i2c_scan(I2C_DISPLAY_ADDRESS + 1)) {
       has_display = true;
     }
   }
@@ -451,7 +456,7 @@ void setup()
     display.init();
     display.flipScreenVertically();
     display.clear();
-    display.drawXbm((128-ch2i_width)/2, 0, ch2i_width, ch2i_height, ch2i_bits);
+    display.drawXbm((128 - ch2i_width) / 2, 0, ch2i_width, ch2i_height, ch2i_bits);
     display.display();
 
     display.setFont(ArialMT_Plain_10);
@@ -468,14 +473,14 @@ void setup()
   strcpy(password, MY_PASSWORD);
 
   // empty sketch SSID, try with SDK ones
-  if ( *ssid=='*' && *password=='*' ) {
+  if ( *ssid == '*' && *password == '*' ) {
     // empty sketch SSID, try autoconnect with SDK saved credentials
     Serial.println(F("No SSID/PSK defined in sketch\r\nConnecting with SDK ones if any"));
     struct station_config conf;
     wifi_station_get_config(&conf);
     strcpy(ssid, reinterpret_cast<char*>(conf.ssid));
     strcpy(password, reinterpret_cast<char*>(conf.password));
-  } 
+  }
 
   Serial.println(F("WiFi scan start"));
   drawProgress(&display, pbar, F("Scanning WiFi"));
@@ -485,23 +490,23 @@ void setup()
   NumberOfNetwork = 0;
   WiFi.scanNetworks(true);
   // Async, wait start
-  while (WiFi.scanNetworks()!=WIFI_SCAN_RUNNING );
+  while (WiFi.scanNetworks() != WIFI_SCAN_RUNNING );
 
   do {
     LedRGBON(led_color);
     delay(5);
-   
-    // Rainbow loop
-    if (++led_color>360)
-      led_color=360;
 
-    // WiFi scan max 50% of progress bar 
+    // Rainbow loop
+    if (++led_color > 360)
+      led_color = 360;
+
+    // WiFi scan max 50% of progress bar
     pbar = led_color * 100 / 360 / 2;
     drawProgress(&display, pbar, F("Scanning WiFi"));
 
     NumberOfNetwork = WiFi.scanComplete();
     //Serial.printf("NumberOfNetwork=%d\n", NumberOfNetwork);
-  } while (NumberOfNetwork==WIFI_SCAN_RUNNING || NumberOfNetwork==WIFI_SCAN_FAILED);
+  } while (NumberOfNetwork == WIFI_SCAN_RUNNING || NumberOfNetwork == WIFI_SCAN_FAILED);
 
   Serial.println(F("scan done"));
 
@@ -521,22 +526,22 @@ void setup()
   WiFi.begin(ssid, password);
 
   // Loop until connected or 20 sec time out
-  #define WIFI_TIME_OUT 20
+#define WIFI_TIME_OUT 20
   unsigned long this_start = millis();
   led_color = 360;
-  while ( WiFi.status() !=WL_CONNECTED && millis()-this_start < (WIFI_TIME_OUT * 1000) ) {
-    // 125 ms wait 
-    for (uint8_t j = 0; j<125; j++) {
+  while ( WiFi.status() != WL_CONNECTED && millis() - this_start < (WIFI_TIME_OUT * 1000) ) {
+    // 125 ms wait
+    for (uint8_t j = 0; j < 125; j++) {
       // Rainbow loop
       LedRGBON(led_color);
-      if (led_color==0) {
-        led_color=360;
+      if (led_color == 0) {
+        led_color = 360;
       } else {
         led_color--;
       }
-      delay(1); 
+      delay(1);
     }
-    if (pbar++>99) {
+    if (pbar++ > 99) {
       pbar = 99;
     }
     drawProgress(&display, pbar, F("Connecting WiFi"), ssid);
@@ -558,19 +563,19 @@ void setup()
   ArduinoOTA.begin();
 
   // OTA callbacks
-  ArduinoOTA.onStart([]() { 
+  ArduinoOTA.onStart([]() {
     // Light of the LED, stop animation
     LedRGBOFF();
-    Serial.println(F("\r\nOTA Starting")); 
+    Serial.println(F("\r\nOTA Starting"));
     drawProgress(&display, 0, "Starting OTA");
   });
 
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) { 
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     char buff[8];
-    uint8_t percent=progress/(total/100); 
+    uint8_t percent = progress / (total / 100);
     sprintf(buff, "%d%%", percent);
     drawProgress(&display, percent, "Uploading", String(buff));
-    Serial.printf("%03d %%\r", percent); 
+    Serial.printf("%03d %%\r", percent);
 
     // hue from 0.0 to 1.0 (rainbow) with 33% (of 0.5f) luminosity
     // With blink
@@ -582,7 +587,7 @@ void setup()
 
   });
 
-  ArduinoOTA.onEnd([]() { 
+  ArduinoOTA.onEnd([]() {
     LedRGBON(COLOR_ORANGE);
     if (has_display) {
       display.clear();
@@ -594,13 +599,13 @@ void setup()
       display.display();
     }
 
-    Serial.println(F("\r\nDone Rebooting")); 
+    Serial.println(F("\r\nDone Rebooting"));
   });
 
-  ArduinoOTA.onError([](ota_error_t error) { 
+  ArduinoOTA.onError([](ota_error_t error) {
     LedRGBON(COLOR_RED);
     drawProgress(&display, 0, "Error");
-    Serial.println(F("\r\nError")); 
+    Serial.println(F("\r\nError"));
   });
 
   if (has_display) {
@@ -619,10 +624,10 @@ void setup()
 }
 
 /* ======================================================================
-Function: loop
-Purpose : you should know ;-)
-====================================================================== */
-void loop() 
+  Function: loop
+  Purpose : you should know ;-)
+  ====================================================================== */
+void loop()
 {
   if (has_display) {
     if (readyForUpdate && ui.getUiState()->frameState == FIXED) {
