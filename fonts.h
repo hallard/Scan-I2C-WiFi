@@ -5,7 +5,7 @@
 
 // Created by http://oleddisplay.squix.ch/ Consider a donation
 // In case of problems make sure that you are using the font file with the correct version!
-const char Roboto_Plain_16[] PROGMEM = {
+const uint8_t  Roboto_Plain_16[] PROGMEM = {
   0x0F, // Width: 15
   0x13, // Height: 19
   0x20, // First Char: 32
@@ -465,7 +465,7 @@ const char Roboto_Plain_16[] PROGMEM = {
 
 // Created by http://oleddisplay.squix.ch/ Consider a donation
 // In case of problems make sure that you are using the font file with the correct version!
-const char Roboto_Medium_Plain_16[] PROGMEM = {
+const uint8_t  Roboto_Medium_Plain_16[] PROGMEM = {
   0x10, // Width: 16
   0x13, // Height: 19
   0x20, // First Char: 32
@@ -925,7 +925,7 @@ const char Roboto_Medium_Plain_16[] PROGMEM = {
 
 // Created by http://oleddisplay.squix.ch/ Consider a donation
 // In case of problems make sure that you are using the font file with the correct version!
-const char Roboto_Condensed_Plain_16[] PROGMEM = {
+const uint8_t Roboto_Condensed_Plain_16[] PROGMEM = {
   0x0D, // Width: 13
   0x13, // Height: 19
   0x20, // First Char: 32
@@ -1385,7 +1385,7 @@ const char Roboto_Condensed_Plain_16[] PROGMEM = {
 
 // Created by http://oleddisplay.squix.ch/ Consider a donation
 // In case of problems make sure that you are using the font file with the correct version!
-const char Roboto_Medium_Plain_12[] PROGMEM = {
+const uint8_t Roboto_Medium_Plain_12[] PROGMEM = {
   0x0C, // Width: 12
   0x0F, // Height: 15
   0x20, // First Char: 32
@@ -1845,7 +1845,7 @@ const char Roboto_Medium_Plain_12[] PROGMEM = {
 
 // Created by http://oleddisplay.squix.ch/ Consider a donation
 // In case of problems make sure that you are using the font file with the correct version!
-const char Roboto_Condensed_Bold_Bold_16[] PROGMEM = {
+const uint8_t Roboto_Condensed_Bold_Bold_16[] PROGMEM = {
   0x0D, // Width: 13
   0x13, // Height: 19
   0x20, // First Char: 32
@@ -2305,7 +2305,7 @@ const char Roboto_Condensed_Bold_Bold_16[] PROGMEM = {
 
 // Created by http://oleddisplay.squix.ch/ Consider a donation
 // In case of problems make sure that you are using the font file with the correct version!
-const char Roboto_Condensed_12[] PROGMEM = {
+const uint8_t Roboto_Condensed_12[] PROGMEM = {
   0x0A, // Width: 10
   0x0F, // Height: 15
   0x20, // First Char: 32
