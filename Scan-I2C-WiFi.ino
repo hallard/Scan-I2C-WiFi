@@ -6,20 +6,27 @@
 // History : V1.00 2014-04-21 - First release
 //         : V1.11 2015-09-23 - rewrite for ESP8266 target
 //         : V1.20 2016-07-13 - Added new OLED Library and NeoPixelBus
+//         : V1.30 2018-04-01 - Added ESP32 support
 //
 // **********************************************************************************
+#if !defined(ARDUINO_ARCH_ESP8266) && !defined(ARDUINO_ARCH_ESP32) 
+#error "This sketch runs only on ESP32 or ESP8266 target"
+#endif 
 
 #include <ArduinoOTA.h>
-#include <ESP8266WiFi.h>
+//#include <ESP8266WiFi.h>
 #include <Ticker.h>
 #include <Wire.h>
 
+#ifdef ARDUINO_ARCH_ESP8266
 extern "C" {
 #include "user_interface.h"
 }
+#endif
 
 #include "icons.h"
 #include "fonts.h"
+
 
 // ===========================================
 // Setup your board configuration here
@@ -34,23 +41,32 @@ char ssid[33] ;
 char password[65];
 
 // I2C Pins Settings
+#ifdef ARDUINO_ARCH_ESP8266
 #define SDA_PIN 4
 #define SDC_PIN 5
+#else
+// Change this, depending on your board I2C pins used
+#define SDA_PIN 21
+#define SDC_PIN 22
+#endif
 
 // Display Settings
 // OLED will be checked with this address and this address+1
 // so here 0x03c and 0x03d
 #define I2C_DISPLAY_ADDRESS 0x3c
-// Choose OLED Type (one only)
-#define OLED_SSD1306
-//#define OLED_SH1106
+// Choose OLED Driver Type (one only)
+//#define OLED_SSD1306
+#define OLED_SH1106
 
-// RGB Led on GPIO0 comment this line if you have no LED
+// RGB Led on GPIO0 comment this line if you have no RGB LED
 #define RGB_LED_PIN 0
-// 2 LEDs
-#define RGB_LED_COUNT 2
-// Comment if you have only RGB LED and not RGBW led
-#define RGBW_LED
+// Number of RGB Led (can be a ring or whatever) 
+#define RGB_LED_COUNT 1
+// Select The line of your LED Type (see NeoPixel Library)
+//#define RGB_TYPE NeoGrbwFeature
+//#define RGB_TYPE NeoRgbwFeature
+//#define RGB_TYPE NeoGrbFeature
+#define RGB_TYPE NeoRgbFeature
 
 // ===========================================
 // End of configuration
@@ -86,16 +102,18 @@ char password[65];
 #define COLOR_PINK           350
 
 #ifdef RGB_LED_PIN
-#ifdef RGBW_LED
-NeoPixelBus<NeoGrbwFeature, NeoEsp8266BitBang800KbpsMethod>rgb_led(RGB_LED_COUNT, RGB_LED_PIN);
-#else
-NeoPixelBus<NeoRgbFeature, NeoEsp8266BitBang800KbpsMethod>rgb_led(RGB_LED_COUNT, RGB_LED_PIN);
-#endif
+  #ifdef ARDUINO_ARCH_ESP8266
+    NeoPixelBus<RGB_TYPE, NeoEsp8266BitBang800KbpsMethod>rgb_led(RGB_LED_COUNT, RGB_LED_PIN);
+  #else
+    NeoPixelBus<RGB_TYPE, NeoEsp32BitBang800KbpsMethod>rgb_led(RGB_LED_COUNT, RGB_LED_PIN);
+  #endif
 #endif
 
 // Number of line to display for devices and Wifi
 #define I2C_DISPLAY_DEVICE  4
 #define WIFI_DISPLAY_NET    4
+
+// OLED Driver Instantiation
 #ifdef OLED_SSD1306
 SSD1306Wire  display(I2C_DISPLAY_ADDRESS, SDA_PIN, SDC_PIN);
 #else
@@ -226,9 +244,23 @@ uint8_t i2c_scan(uint8_t address = 0xff)
         strcpy(device, "TH02" );
       else if (address == 0x29 || address == 0x39 || address == 0x49)
         strcpy(device, "TSL2561" );
+
+      else if (address==0x50) {
+        strcpy(device, "24AA02E64" );
+        // This device respond to 0x50 to 0x57 address
+        address+=0x07;
+      }
+      else if (address == 0x55 )
+        strcpy(device, "BQ72441" );
       else if (address == I2C_DISPLAY_ADDRESS || address == I2C_DISPLAY_ADDRESS + 1)
         strcpy(device, "OLED SSD1306" );
-      else if (address == 0x64)
+      else if (address >= 0x60 && address <= 0x62 ) {
+        strcpy(device, "MCP4725_Ax" );
+        device[9]= '0' + (address & 0x03);
+      } else if (address >= 0x68 && address <= 0x6A ) {
+        strcpy(device, "MCP3421_Ax" );
+        device[9]= '0' + (address & 0x03);
+      } else if (address == 0x64)
         strcpy(device, "ATSHA204" );
       else
         strcpy(device, "Unknown" );
@@ -383,7 +415,12 @@ void drawFrameNet(OLEDDisplay *display, OLEDDisplayUiState* state, int16_t x, in
   for (int i = 0; i < NumberOfNetwork; i++) {
     // Print SSID and RSSI for each network found
     if (i < WIFI_DISPLAY_NET) {
+
+      #ifdef ARDUINO_ARCH_ESP8266
       sprintf(buff, "%s %c", WiFi.SSID(i).c_str(), WiFi.encryptionType(i) == ENC_TYPE_NONE ? ' ' : '*' );
+      #else  
+      sprintf(buff, "%s %c", WiFi.SSID(i).c_str(), WiFi.encryptionType(i) == WIFI_AUTH_OPEN ? ' ' : '*' );
+      #endif
       display->drawString(x + 0, y + 16 + 12 * i, buff);
     }
   }
@@ -431,10 +468,28 @@ void setup()
   uint16_t led_color ;
   char thishost[33];
   uint8_t pbar = 0;
+  uint64_t chipid;  
 
   Serial.begin(115200);
+  // I like to know what sketch is running on board
   Serial.print(F("\r\nBooting on "));
   Serial.println(ARDUINO_BOARD);
+  Serial.printf_P( PSTR("Scan-I2C-WiFi.ino on %s %s %s\n"), ARDUINO_BOARD, __DATE__ , __TIME__ );
+  #ifdef ARDUINO_ARCH_ESP8266
+    Serial.print(F("ESP8266 Core Version "));
+    Serial.println(ESP.getCoreVersion());
+    chipid = ESP.getChipId();
+  #else
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+    Serial.printf_P(PSTR("ESP32 %d cores\nWiFi%s%s\n"), chip_info.cores,
+        (chip_info.features & CHIP_FEATURE_BT) ? "/BT" : "",
+        (chip_info.features & CHIP_FEATURE_BLE) ? "/BLE" : "");
+    Serial.printf_P(PSTR("ESP Rev.%d\n"), chip_info.revision);
+    Serial.printf_P(PSTR("%dMB %s Flash\n"), spi_flash_get_chip_size() / (1024 * 1024),
+        (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "int." : "ext.");  
+    chipid=ESP.getEfuseMac();
+  #endif
 
   LedRGBOFF();
 
@@ -476,10 +531,12 @@ void setup()
   if ( *ssid == '*' && *password == '*' ) {
     // empty sketch SSID, try autoconnect with SDK saved credentials
     Serial.println(F("No SSID/PSK defined in sketch\r\nConnecting with SDK ones if any"));
+    #ifdef ARDUINO_ARCH_ESP8266
     struct station_config conf;
     wifi_station_get_config(&conf);
     strcpy(ssid, reinterpret_cast<char*>(conf.ssid));
     strcpy(password, reinterpret_cast<char*>(conf.password));
+    #endif
   }
 
   Serial.println(F("WiFi scan start"));
@@ -520,7 +577,7 @@ void setup()
   Serial.println(F("scan done"));
 
   // Set Hostname for OTA and network (add only 2 last bytes of last MAC Address)
-  sprintf_P(thishost, PSTR("ScanI2CWiFi-%04X"), ESP.getChipId() & 0xFFFF);
+  sprintf_P(thishost, PSTR("ScanI2CWiFi-%04X"), chipid & 0xFFFF);
 
   Serial.printf("connecting to %s with psk %s\r\n", ssid, password );
   WiFi.begin(ssid, password);
